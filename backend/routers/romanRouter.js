@@ -17,6 +17,33 @@ const romanConvertorRouter = (req, res) => {
   }
 };
 
+const romanWithSseRouter = (req, res) => {
+  const regularNumber = req.query.number;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  if (regularNumber == null) {
+    res.write(`event: error\ndata: Missing query param: number\n\n`);
+    return;
+  }
+
+  const n = Number(regularNumber);
+  if (!Number.isInteger(n) || n < 0 || n > 100) {
+    res.write(
+      `event: error\ndata: Number must be an integer between 0 and 100\n\n`
+    );
+    return;
+  }
+
+  const roman = convertToRoman(n);
+
+  // send result as an SSE message
+  res.write(`data: ${JSON.stringify({ input: n, roman })}\n\n`);
+};
+
 module.exports = {
   romanConvertorRouter,
+  romanWithSseRouter,
 };

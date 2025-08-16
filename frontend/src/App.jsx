@@ -8,10 +8,10 @@ export default function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e) {
+  function handleSSE(e) {
     e.preventDefault();
-    setError('');
     setResult(null);
+    setError('');
 
     const n = Number(value);
     if (!Number.isInteger(n)) {
@@ -19,15 +19,25 @@ export default function App() {
       return;
     }
 
-    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/roman?number=${n}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Request failed');
-      setResult(`${data.input} --> ${data.roman}`);
-    } catch (err) {
-      setError(err.message || 'Something went wrong');
-    } finally {
+      setLoading(true);
+      const url = `${API_BASE}/api/roman-sse?number=${n}`;
+      const evtSource = new EventSource(url);
+
+      evtSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        setResult(`${data.input} → ${data.roman}`);
+        setLoading(false);
+        evtSource.close();
+      };
+
+      evtSource.onerror = () => {
+        setError('Error receiving SSE data');
+        setLoading(false);
+        evtSource.close();
+      };
+    } catch {
+      setError('Unexpected error');
       setLoading(false);
     }
   }
@@ -45,7 +55,7 @@ export default function App() {
       <h1>Roman Numerals</h1>
       <p>Convert an integer between 0 and 100.</p>
 
-      <form onSubmit={handleSubmit}
+      <form onSubmit={handleSSE}
         style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
       >
         <label htmlFor="n">Number</label>
